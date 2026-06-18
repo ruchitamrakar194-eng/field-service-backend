@@ -1,0 +1,139 @@
+const prisma = require('../../config/db');
+
+const SETTINGS_ID = 1;
+
+const BUSINESS_FIELDS = [
+  'companyName',
+  'businessEmail',
+  'phoneNumber',
+  'websiteUrl',
+  'businessName',
+  'logoUrl',
+  'businessPhone',
+  'businessContactEmail',
+  'businessAddress'
+];
+
+const ensureBusinessColumns = async () => {
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE settings
+      ADD COLUMN IF NOT EXISTS businessName VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS logoUrl VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS businessPhone VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS businessContactEmail VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS businessAddress TEXT NULL
+  `);
+};
+
+const ensureSettingsRow = async () => {
+  let settings = await prisma.settings.findUnique({
+    where: { id: SETTINGS_ID }
+  });
+
+  if (!settings) {
+    settings = await prisma.settings.create({
+      data: { id: SETTINGS_ID }
+    });
+  }
+
+  return settings;
+};
+
+const getSettings = async () => {
+  return ensureSettingsRow();
+};
+
+const updateSettings = async (updatedData) => {
+  return prisma.settings.upsert({
+    where: { id: SETTINGS_ID },
+    update: updatedData,
+    create: {
+      id: SETTINGS_ID,
+      ...updatedData
+    }
+  });
+};
+
+const pickBusinessFields = (payload = {}) => {
+  return BUSINESS_FIELDS.reduce((acc, field) => {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      acc[field] = payload[field];
+    }
+    return acc;
+  }, {});
+};
+
+const getBusinessSettings = async () => {
+  await ensureSettingsRow();
+  await ensureBusinessColumns();
+
+  const rows = await prisma.$queryRawUnsafe(`
+    SELECT businessName, logoUrl, businessPhone, businessContactEmail, businessAddress
+    FROM settings
+    WHERE id = 1
+    LIMIT 1
+  `);
+
+  const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : {};
+  return pickBusinessFields(row);
+};
+
+const updateBusinessSettings = async (payload) => {
+  const businessData = pickBusinessFields(payload);
+  await ensureSettingsRow();
+  await ensureBusinessColumns();
+
+  const {
+    businessName = null,
+    logoUrl = null,
+    businessPhone = null,
+    businessContactEmail = null,
+    businessAddress = null
+  } = businessData;
+
+  await prisma.$executeRaw`
+    UPDATE settings
+    SET
+      businessName = ${businessName},
+      logoUrl = ${logoUrl},
+      businessPhone = ${businessPhone},
+      businessContactEmail = ${businessContactEmail},
+      businessAddress = ${businessAddress}
+    WHERE id = ${SETTINGS_ID}
+  `;
+
+  return getBusinessSettings();
+};
+
+const getPublicBookingSettings = async () => {
+  const settings = await ensureSettingsRow();
+  
+  // Default fallback if not configured
+  const defaultConfig = {
+    allowedDays: [1, 2, 3, 4, 5], // Mon-Fri
+    timeSlots: ['Morning (8AM - 12PM)', 'Afternoon (12PM - 4PM)', 'Evening (4PM - 8PM)'],
+    maxBookingsPerDay: 10,
+    blockedDates: [],
+    services: [
+      'HVAC repair', 'Plumbing', 'Electrical', 'Roofing', 'Landscaping',
+      'Pest Control', 'General Repair', 'Other'
+    ]
+  };
+
+  if (!settings.bookingConfig) return defaultConfig;
+  
+  return {
+    ...defaultConfig,
+    ...settings.bookingConfig,
+    services: settings.bookingConfig.services || defaultConfig.services
+  };
+};
+
+module.exports = {
+  getSettings,
+  updateSettings,
+  getBusinessSettings,
+  updateBusinessSettings,
+  pickBusinessFields,
+  getPublicBookingSettings
+};
