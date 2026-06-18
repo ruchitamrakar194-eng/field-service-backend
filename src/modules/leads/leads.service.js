@@ -8,18 +8,19 @@ let leadColumnsEnsured = false;
 const ensureLeadColumns = async () => {
   if (leadColumnsEnsured) return;
   leadColumnsEnsured = true;
-  try {
-    await prisma.$executeRawUnsafe(`
-      ALTER TABLE lead
-      ADD COLUMN IF NOT EXISTS proposedDate DATETIME(3) NULL,
-      ADD COLUMN IF NOT EXISTS proposedTimeSlot VARCHAR(191) NULL,
-      ADD COLUMN IF NOT EXISTS internalNote TEXT NULL,
-      ADD COLUMN IF NOT EXISTS customerMessage TEXT NULL,
-      ADD COLUMN IF NOT EXISTS pricingData JSON NULL
-    `);
-  } catch (error) {
-    leadColumnsEnsured = false;
-    console.error('Failed to ensure lead columns', error);
+  const columns = [
+    'ADD COLUMN proposedDate DATETIME(3) NULL',
+    'ADD COLUMN proposedTimeSlot VARCHAR(191) NULL',
+    'ADD COLUMN internalNote TEXT NULL',
+    'ADD COLUMN customerMessage TEXT NULL',
+    'ADD COLUMN pricingData JSON NULL'
+  ];
+  for (const col of columns) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE lead ${col}`);
+    } catch (error) {
+      // Ignore error if column already exists
+    }
   }
 };
 
