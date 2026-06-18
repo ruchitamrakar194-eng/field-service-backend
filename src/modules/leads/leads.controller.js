@@ -8,7 +8,7 @@ const prisma = require('../../config/db');
 const createLead = async (req, res) => {
   try {
     const { token, ...leadData } = req.body;
-    
+    console.log("token",token);
     // If token is provided, validate it (for secure shared links)
     if (token) {
       const link = await prisma.publicFormLink.findUnique({ where: { token } });
