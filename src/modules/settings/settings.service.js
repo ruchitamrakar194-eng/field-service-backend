@@ -15,20 +15,14 @@ const BUSINESS_FIELDS = [
 ];
 
 const ensureBusinessColumns = async () => {
-  const columns = [
-    'ADD COLUMN businessName VARCHAR(191) NULL',
-    'ADD COLUMN logoUrl VARCHAR(191) NULL',
-    'ADD COLUMN businessPhone VARCHAR(191) NULL',
-    'ADD COLUMN businessContactEmail VARCHAR(191) NULL',
-    'ADD COLUMN businessAddress TEXT NULL'
-  ];
-  for (const col of columns) {
-    try {
-      await prisma.$executeRawUnsafe(`ALTER TABLE settings ${col}`);
-    } catch (e) {
-      // Ignore duplicate column errors
-    }
-  }
+  await prisma.$executeRawUnsafe(`
+    ALTER TABLE settings
+      ADD COLUMN IF NOT EXISTS businessName VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS logoUrl VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS businessPhone VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS businessContactEmail VARCHAR(191) NULL,
+      ADD COLUMN IF NOT EXISTS businessAddress TEXT NULL
+  `);
 };
 
 const ensureSettingsRow = async () => {

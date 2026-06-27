@@ -11,7 +11,8 @@ const normalizeEstimateItems = (items = []) => {
       description: (item.desc || item.description || 'No description').trim(),
       quantity: safeQty,
       unitPrice: safeUnitPrice,
-      total: Number((safeQty * safeUnitPrice).toFixed(2))
+      total: Number((safeQty * safeUnitPrice).toFixed(2)),
+      type: item.type || 'LABOR'
     };
   });
 };
@@ -43,7 +44,7 @@ const getAll = async (user) => {
 };
 
 const create = async (estimateData) => {
-  const { items, projectTitle, notes, customerId, status } = estimateData;
+  const { items, projectTitle, notes, customerId, status, displayOption } = estimateData;
   const mappedItems = normalizeEstimateItems(items);
   const { total } = calculateTotalsFromItems(mappedItems);
 
@@ -53,6 +54,7 @@ const create = async (estimateData) => {
       projectTitle,
       notes,
       status: normalizeEstimateStatus(status),
+      displayOption: displayOption || 'BOTH',
       totalAmount: total || 0,
       items: {
         create: mappedItems
@@ -63,7 +65,7 @@ const create = async (estimateData) => {
 };
 
 const update = async (id, estimateData) => {
-  const { items, projectTitle, notes, status } = estimateData;
+  const { items, projectTitle, notes, status, displayOption } = estimateData;
   const estimateId = parseInt(id);
   const existingEstimate = await prisma.estimate.findUnique({ where: { id: estimateId } });
   const hasItemsUpdate = Array.isArray(items);
@@ -81,6 +83,7 @@ const update = async (id, estimateData) => {
       projectTitle: projectTitle ?? existingEstimate?.projectTitle,
       notes: notes ?? existingEstimate?.notes,
       status: normalizeEstimateStatus(status, existingEstimate?.status || 'PENDING'),
+      displayOption: displayOption ?? existingEstimate?.displayOption ?? 'BOTH',
       totalAmount: total,
       ...(hasItemsUpdate ? { items: { create: mappedItems } } : {})
     },

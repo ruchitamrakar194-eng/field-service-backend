@@ -41,18 +41,17 @@ const ensureScheduledAtBackfill = async () => {
 const ensureSignatureColumns = async () => {
   if (signatureColumnsEnsured) return;
   signatureColumnsEnsured = true;
-  const columns = [
-    'ADD COLUMN startSignature TEXT NULL',
-    'ADD COLUMN endSignature TEXT NULL',
-    'ADD COLUMN startSignedAt DATETIME(3) NULL',
-    'ADD COLUMN endSignedAt DATETIME(3) NULL'
-  ];
-  for (const col of columns) {
-    try {
-      await prisma.$executeRawUnsafe(`ALTER TABLE job ${col}`);
-    } catch (error) {
-      // Ignore error if column already exists
-    }
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE job
+      ADD COLUMN IF NOT EXISTS startSignature TEXT NULL,
+      ADD COLUMN IF NOT EXISTS endSignature TEXT NULL,
+      ADD COLUMN IF NOT EXISTS startSignedAt DATETIME(3) NULL,
+      ADD COLUMN IF NOT EXISTS endSignedAt DATETIME(3) NULL
+    `);
+  } catch (error) {
+    console.error('Failed to ensure job signature columns', error);
+    signatureColumnsEnsured = false;
   }
 };
 

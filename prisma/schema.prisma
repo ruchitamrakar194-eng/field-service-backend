@@ -224,6 +224,7 @@ model Estimate {
   customerSignature String?   @db.Text
   approvedAt   DateTime?
   declinedAt   DateTime?
+  displayOption String        @default("BOTH") // "LABOR_ONLY", "MATERIAL_ONLY", "BOTH"
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -241,6 +242,7 @@ model EstimateItem {
   quantity    Int
   unitPrice   Decimal  @db.Decimal(10, 2)
   total       Decimal  @db.Decimal(10, 2)
+  type        String   @default("LABOR") // "LABOR", "MATERIAL"
 
   estimate    Estimate @relation(fields: [estimateId], references: [id], map: "EstimateItem_estimateId_fkey")
   @@map("estimateitem")
